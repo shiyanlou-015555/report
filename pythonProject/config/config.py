@@ -30,3 +30,9 @@ class Configurable(object):
     @property
     def label_size(self):
         return self.__config.get('train','label_size')
+    @property
+    def pre_emb(self):
+        return self.__config.get('train','cache_dir')
+    @property
+    def test_dir(self):
+        return self.__config.get('train','test_file')

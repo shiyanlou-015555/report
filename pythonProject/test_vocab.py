@@ -12,3 +12,6 @@ vocab_pre = Vocab.Vocab_built(max_len=50)
 vocab = vocab_pre.get_vocab_comments(train)
 #print(vocab.stoi) {word:id}'<unk>': 0, '<pad>': 1, 'the': 2, 'a': 3, 'and': 4,
 #print(vocab.stoi)
+'''
+这里需要注意，我们的pad需要补1，不能是unk
+'''
