@@ -36,3 +36,9 @@ class Configurable(object):
     @property
     def test_dir(self):
         return self.__config.get('train','test_file')
+    @property
+    def num_epochs(self):
+        return self.__config.get('train','num_epochs')
+    @property
+    def lr(self):
+        return self.__config.get('train','lr')

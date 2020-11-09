@@ -44,7 +44,6 @@ class BiRNN(torch.nn.Module):
         outputs, _ = self.encoder(embeddings) # output, (h, c)
         # 连结初始时间步和最终时间步的隐藏状态作为全连接层输入。它的形状为
         # (批量大小, 4 * 隐藏单元个数)。
-        # 有问题encoding = torch.cat((outputs[0], outputs[-1]), -1)连接失败
         #encoding=outputs.sum(dim=0)
         #print(outputs.permute(1,2,0).shape)
         temp = outputs.permute(1,2,0)

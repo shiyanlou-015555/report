@@ -65,7 +65,7 @@ def pred(data_iter,net,device=None):
     return f1(label,label_true,classifications=2)
 # 训练函数
 
-def train(train_iter,dev_iter,net, loss, optimizer, device, num_epochs):
+def train(train_iter,dev_iter,net, loss, optimizer, scheduler,device, num_epochs):
     net = net.to(device)
     print("training on ", device)
     batch_count = 0
@@ -79,10 +79,12 @@ def train(train_iter,dev_iter,net, loss, optimizer, device, num_epochs):
             optimizer.zero_grad()
             l.backward()
             optimizer.step()
+
             train_l_sum += l.cpu().item()
             # print(l.cpu().item())
             train_acc_sum += (y_hat.argmax(dim=1) == y).sum().cpu().item()
             dev_f1 = pred(dev_iter,net,device)
+            scheduler.step(dev_f1)# 对验证集进行测试
             n += y.shape[0]
             batch_count += 1
         print('epoch %d, loss %.4f, train acc %.3f, dev_f1score %.3f,time %.1f sec'
@@ -121,11 +123,16 @@ net.embedding.weight.data.copy_(load_pretrained_embedding(vocab.itos, glove_voca
 net.embedding.weight.requires_grad = False # 直接加载预训练好的, 所以不需要更新它
 
 ### 训练
-num_epochs = 12
+num_epochs = 7
+lr = 0.004
 
-optimizer = torch.optim.Adam(net.parameters())
+optimizer = torch.optim.Adam(net.parameters(),lr=lr)
+# 指数调整
+# scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer,gamma=0.9)
+#scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer,step_size=30,gamma=0.5)f1_score is :0.7577853675212161
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,mode='max',factor=0.5,patience=10,verbose=True,eps=0.0005)#f1_score is :0.7605179083076073
 loss = torch.nn.CrossEntropyLoss()# softmax,交叉熵
-train(train_iter,dev_iter,net, loss, optimizer, device, num_epochs)
+train(train_iter,dev_iter,net, loss, optimizer,scheduler, device, num_epochs)
 # 测试
 label = []
 label_true = []
@@ -170,4 +177,17 @@ epoch 7, loss 0.0105, train acc 0.973, dev_f1score 0.763,time 6.6 sec
 epoch 8, loss 0.0070, train acc 0.983, dev_f1score 0.760,time 6.6 sec
 0.7660377358490567
 f1_score is :0.7656165913954696
+There are 28 oov words.
+training on  cuda
+Epoch    17: reducing learning rate of group 0 to 2.0000e-03.
+Epoch    33: reducing learning rate of group 0 to 1.0000e-03.
+epoch 1, loss 0.5822, train acc 0.683, dev_f1score 0.723,time 7.8 sec
+epoch 2, loss 0.2421, train acc 0.764, dev_f1score 0.738,time 6.8 sec
+epoch 3, loss 0.1502, train acc 0.787, dev_f1score 0.729,time 6.7 sec
+epoch 4, loss 0.1058, train acc 0.802, dev_f1score 0.733,time 7.0 sec
+epoch 5, loss 0.0794, train acc 0.819, dev_f1score 0.732,time 6.9 sec
+epoch 6, loss 0.0609, train acc 0.834, dev_f1score 0.745,time 6.9 sec
+epoch 7, loss 0.0468, train acc 0.857, dev_f1score 0.744,time 7.1 sec
+0.7603773584905661
+f1_score is :0.7605179083076073
 '''
