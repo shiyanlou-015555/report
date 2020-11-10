@@ -34,7 +34,7 @@ class BiRNN(torch.nn.Module):
         # 改进
         embedding1 = self.embedding1(inputs.permute(1, 0))
         embedding2 = self.embedding2(inputs.permute(1, 0))
-        embeddings = self.dropout(torch.add(embedding1,embedding2))
+        embeddings = torch.add(embedding1,embedding2)
         # rnn.LSTM只传入输入embeddings，因此只返回最后一层的隐藏层在各时间步的隐藏状态。
         # outputs形状是(seq_len, batch_size, num_layers*hiddens)
         outputs, _ = self.encoder(embeddings) # output, (h, c)

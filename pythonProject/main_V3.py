@@ -7,7 +7,7 @@ import torchtext.vocab as Vocab
 import matplotlib.pyplot as plt
 import time
 import torchtext.vocab as pre_Vocab
-import sys,os
+import random
 import torch.nn.functional as F
 import  model.Bilstmpad as bilstm
 import Vocab
@@ -19,6 +19,8 @@ from eval.score import f1
 '''
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 config_test = config.Configurable(r'D:\PycharmProjects\pythonProject\config\db.conf')
+seed_num = int(config_test.seed)
+random.seed(seed_num)
 # 训练集合
 train = pd.read_csv(config_test.train_dir)[config_test.cloums.split(',')]
 dev = pd.read_csv(config_test.dev_dir)[config_test.cloums.split(',')]
@@ -43,7 +45,7 @@ test_iter = Data.DataLoader(test_set,batch_size)
 # RNN数据
 # 字符向量
 embed_size, num_hiddens, num_layers,dropout,label_size = int(config_test.embed_size),int(config_test.num_hiddens),int(config_test.num_layers),float(config_test.dropout),int(config_test.label_size)
-net = bilstm.BiRNN(vocab, embed_size, num_hiddens, num_layers,dropout,label_size)
+net = bilstm.BiRNN(vocab, embed_size, num_hiddens, num_layers,dropout,label_size,seed_num)
 # 验证集合函数
 def pred(data_iter,net,device=None):
     if device is None:
@@ -62,7 +64,9 @@ def pred(data_iter,net,device=None):
             label.extend(torch.argmax(net(X.to(device),z), dim=1).cpu().numpy().tolist())
             label_true.extend(Y.numpy().tolist())
         net.train()
-    return f1(label,label_true,classifications=2)
+    from sklearn.metrics import f1_score
+    # return f1(label,label_true,classifications=2)
+    return f1_score(label, label_true)
 # 训练函数
 
 def train(train_iter,dev_iter,net, loss, optimizer, scheduler,device, num_epochs):
@@ -85,7 +89,7 @@ def train(train_iter,dev_iter,net, loss, optimizer, scheduler,device, num_epochs
             train_acc_sum += (y_hat.argmax(dim=1) == y).sum().cpu().item()
             dev_f1 = pred(dev_iter,net,device)
             scheduler.step(dev_f1)
-            if(dev_f1>0.763):
+            if(dev_f1>0.781):
                 print(pred(test_iter,net,device))
             n += y.shape[0]
             batch_count += 1
@@ -123,17 +127,17 @@ def load_pretrained_embedding(words, pretrained_vocab):
 
 
 net.embedding.weight.data.copy_(load_pretrained_embedding(vocab.itos, glove_vocab))
-net.embedding.weight.requires_grad = False # 直接加载预训练好的, 所以不需要更新它
+net.embedding.weight.requires_grad = True # 直接加载预训练好的, 所以不需要更新它
 
 ### 训练
-num_epochs = 15
-lr = 0.004
+num_epochs = 50
+lr = 0.01
 
 optimizer = torch.optim.Adam(net.parameters(),lr=lr)
 # 指数调整
 # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer,gamma=0.9)
 #scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer,step_size=30,gamma=0.5)f1_score is :0.7577853675212161
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,mode='max',factor=0.5,patience=10,verbose=True,eps=0.0005)#f1_score is :0.7605179083076073
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,mode='max',factor=0.5,patience=10,verbose=True,eps=0.000005)#f1_score is :0.7605179083076073
 loss = torch.nn.CrossEntropyLoss()# softmax,交叉熵
 train(train_iter,dev_iter,net, loss, optimizer,scheduler, device, num_epochs)
 # 测试
@@ -154,43 +158,3 @@ for i,j in zip(label,label_true):
     k=k+1
 print(k/1060)
 print('f1_score is :{}'.format(f1(label_true,label,2)))
-'''
-There are 23 oov words.
-training on  cuda
-epoch 1, loss 0.5810, train acc 0.688, dev_f1score 0.736,time 7.7 sec
-epoch 2, loss 0.2105, train acc 0.804, dev_f1score 0.753,time 6.6 sec
-epoch 3, loss 0.1105, train acc 0.853, dev_f1score 0.754,time 6.6 sec
-0.7591377694470478
-f1_score is :0.7577067180611479
-training on  cuda
-epoch 1, loss 0.6107, train acc 0.656, dev_f1score 0.740,time 7.4 sec
-epoch 2, loss 0.2153, train acc 0.805, dev_f1score 0.751,time 6.5 sec
-epoch 3, loss 0.1101, train acc 0.860, dev_f1score 0.769,time 6.5 sec
-0.7575471698113208
-f1_score is :0.7582622461944963
-There are 28 oov words.
-training on  cuda
-epoch 1, loss 0.6104, train acc 0.660, dev_f1score 0.725,time 7.4 sec
-epoch 2, loss 0.2173, train acc 0.797, dev_f1score 0.759,time 6.6 sec
-epoch 3, loss 0.1107, train acc 0.859, dev_f1score 0.776,time 6.7 sec
-epoch 4, loss 0.0655, train acc 0.891, dev_f1score 0.772,time 6.7 sec
-epoch 5, loss 0.0363, train acc 0.932, dev_f1score 0.759,time 6.8 sec
-epoch 6, loss 0.0201, train acc 0.958, dev_f1score 0.764,time 6.7 sec
-epoch 7, loss 0.0105, train acc 0.973, dev_f1score 0.763,time 6.6 sec
-epoch 8, loss 0.0070, train acc 0.983, dev_f1score 0.760,time 6.6 sec
-0.7660377358490567
-f1_score is :0.7656165913954696
-There are 28 oov words.
-training on  cuda
-Epoch    17: reducing learning rate of group 0 to 2.0000e-03.
-Epoch    33: reducing learning rate of group 0 to 1.0000e-03.
-epoch 1, loss 0.5822, train acc 0.683, dev_f1score 0.723,time 7.8 sec
-epoch 2, loss 0.2421, train acc 0.764, dev_f1score 0.738,time 6.8 sec
-epoch 3, loss 0.1502, train acc 0.787, dev_f1score 0.729,time 6.7 sec
-epoch 4, loss 0.1058, train acc 0.802, dev_f1score 0.733,time 7.0 sec
-epoch 5, loss 0.0794, train acc 0.819, dev_f1score 0.732,time 6.9 sec
-epoch 6, loss 0.0609, train acc 0.834, dev_f1score 0.745,time 6.9 sec
-epoch 7, loss 0.0468, train acc 0.857, dev_f1score 0.744,time 7.1 sec
-0.7603773584905661
-f1_score is :0.7605179083076073
-'''

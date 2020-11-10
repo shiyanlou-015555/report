@@ -16,9 +16,14 @@ output： 维度和输入数据类似，只不过最后的feature部分会有点
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence,pad_packed_sequence
+import random
 class BiRNN(torch.nn.Module):
-    def __init__(self, vocab, embed_size, num_hiddens, num_layers,Dropout,label_size):
+    def __init__(self, vocab, embed_size, num_hiddens, num_layers,Dropout,label_size,seed_num):
         super(BiRNN, self).__init__()
+        #随机种子
+        random.seed(seed_num)
+        torch.manual_seed(seed_num)
+        torch.cuda.manual_seed(seed_num)
         self.embedding = nn.Embedding(len(vocab),embed_size)
         # a b c : 1 2 3 1*3 1: [0.01,0.02,2.96]  词表长度*dim
         # bidirectional设为True即得到双向循环神经网络

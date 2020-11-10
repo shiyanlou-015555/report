@@ -42,3 +42,6 @@ class Configurable(object):
     @property
     def lr(self):
         return self.__config.get('train','lr')
+    @property
+    def seed(self):
+        return self.__config.get('train','seed')
