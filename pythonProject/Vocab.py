@@ -34,6 +34,7 @@ class Vocab_built(object):
 # '<unk>': 0, '<pad>': 1, 'the': 2, 'a': 3, 'and': 4
         tokenized_data = self.get_tokenized_comments(data)
         features = torch.tensor([pad([vocab.stoi[word] for word in words]) for words in tokenized_data])
+        # print(features)
         labels = torch.tensor([score for score in data['target']])  # 需要优化
         seq_len = torch.tensor([seq for seq in data['seq_len']])
         return features, labels,seq_len

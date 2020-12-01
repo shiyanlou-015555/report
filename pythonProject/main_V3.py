@@ -68,8 +68,8 @@ def pred(data_iter,net,device=None):
     # return f1(label,label_true,classifications=2)
     return f1_score(label, label_true)
 # 训练函数
-
-def train(train_iter,dev_iter,net, loss, optimizer, scheduler,device, num_epochs):
+model_num = 1
+def train(train_iter,dev_iter,net, loss, optimizer, scheduler,device, num_epochs,model_num):
     net = net.to(device)
     print("training on ", device)
     batch_count = 0
@@ -89,8 +89,13 @@ def train(train_iter,dev_iter,net, loss, optimizer, scheduler,device, num_epochs
             train_acc_sum += (y_hat.argmax(dim=1) == y).sum().cpu().item()
             dev_f1 = pred(dev_iter,net,device)
             scheduler.step(dev_f1)
-            if(dev_f1>0.781):
-                print(pred(test_iter,net,device))
+            if(dev_f1>0.788):
+                if (model_num == 1):
+                    print(pred(test_iter,net,device))
+                    # torch.save(net,r'D:\PycharmProjects\pythonProject\model_save\lstm_pad.pkl')
+                    # model_num = model_num+1
+                else:
+                    print(pred(test_iter,net,device))
             n += y.shape[0]
             batch_count += 1
         print('epoch %d, loss %.4f, train acc %.3f, dev_f1score %.3f,time %.1f sec'
@@ -139,7 +144,7 @@ optimizer = torch.optim.Adam(net.parameters(),lr=lr)
 #scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer,step_size=30,gamma=0.5)f1_score is :0.7577853675212161
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,mode='max',factor=0.5,patience=10,verbose=True,eps=0.000005)#f1_score is :0.7605179083076073
 loss = torch.nn.CrossEntropyLoss()# softmax,交叉熵
-train(train_iter,dev_iter,net, loss, optimizer,scheduler, device, num_epochs)
+train(train_iter,dev_iter,net, loss, optimizer,scheduler, device, num_epochs,model_num)
 # 测试
 label = []
 label_true = []
