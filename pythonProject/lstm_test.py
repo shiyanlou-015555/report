@@ -9,7 +9,7 @@ import time
 import torchtext.vocab as pre_Vocab
 import sys,os
 import torch.nn.functional as F
-import  model.lstm_my as lstm
+import  model.bilstm_my as lstm
 import Vocab
 from config import config
 # 评价函数 evaluate model
@@ -90,6 +90,8 @@ def train(train_iter,dev_iter,net, loss, optimizer, scheduler,device, num_epochs
             # print(l.cpu().item())
             train_acc_sum += (y_hat.argmax(dim=1) == y).sum().cpu().item()
             dev_f1 = pred(dev_iter,net,device)
+            if(dev_f1>0.78):
+                print("存在且成功")
             scheduler.step(dev_f1)# 对验证集进行测试
             n += y.shape[0]
             batch_count += 1
@@ -139,7 +141,7 @@ optimizer = torch.optim.Adam(net.parameters(),lr=lr)
 #scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer,step_size=30,gamma=0.5)f1_score is :0.7577853675212161
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,mode='max',factor=0.5,patience=10,verbose=True,eps=0.000005)#f1_score is :0.7605179083076073
 loss = torch.nn.CrossEntropyLoss()# softmax,交叉熵
-train(train_iter,dev_iter,net, loss, optimizer,scheduler, device, num_epochs)
+train(train_iter,test_iter,net, loss, optimizer,scheduler, device, num_epochs)
 # 测试
 label = []
 label_true = []
@@ -173,4 +175,30 @@ Epoch   158: reducing learning rate of group 0 to 1.9531e-05.
 Epoch   169: reducing learning rate of group 0 to 9.7656e-06.
 epoch 3, loss 0.1551, train acc 0.775, dev_f1 0.741,time 15.0 sec
 epoch 4, loss 0.1158, train acc 0.778, dev_f1 0.741,time 15.1 sec
+C:\Users\ACH\anaconda3\envs\dl\python.exe D:/PycharmProjects/pythonProject/lstm_test.py
+There are 27 oov words.
+training on  cuda
+C:\Users\ACH\anaconda3\envs\dl\lib\site-packages\torch\tensor.py:447: UserWarning: non-inplace resize is deprecated
+  warnings.warn("non-inplace resize is deprecated")
+Epoch    56: reducing learning rate of group 0 to 5.0000e-03.
+epoch 1, loss 0.5879, train acc 0.684, dev_f1 0.745,time 30.1 sec
+Epoch    67: reducing learning rate of group 0 to 2.5000e-03.
+Epoch    97: reducing learning rate of group 0 to 1.2500e-03.
+Epoch   118: reducing learning rate of group 0 to 6.2500e-04.
+存在且成功
+存在且成功
+存在且成功
+epoch 2, loss 0.2215, train acc 0.791, dev_f1 0.763,time 29.5 sec
+Epoch   133: reducing learning rate of group 0 to 3.1250e-04.
+Epoch   144: reducing learning rate of group 0 to 1.5625e-04.
+Epoch   155: reducing learning rate of group 0 to 7.8125e-05.
+Epoch   166: reducing learning rate of group 0 to 3.9063e-05.
+Epoch   177: reducing learning rate of group 0 to 1.9531e-05.
+Epoch   188: reducing learning rate of group 0 to 9.7656e-06.
+epoch 3, loss 0.1337, train acc 0.816, dev_f1 0.774,time 30.8 sec
+epoch 4, loss 0.0994, train acc 0.819, dev_f1 0.774,time 30.2 sec
+epoch 5, loss 0.0794, train acc 0.819, dev_f1 0.774,time 28.9 sec
+epoch 6, loss 0.0662, train acc 0.819, dev_f1 0.774,time 29.5 sec
+epoch 7, loss 0.0566, train acc 0.820, dev_f1 0.774,time 29.7 sec
+
 '''
