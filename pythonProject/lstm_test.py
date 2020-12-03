@@ -158,3 +158,19 @@ for i,j in zip(label,label_true):
     k=k+1
 print(k/1060)
 print('f1_score is :{}'.format(f1(label_true,label,2)))
+'''
+Epoch    17: reducing learning rate of group 0 to 5.0000e-03.
+Epoch    47: reducing learning rate of group 0 to 2.5000e-03.
+Epoch    58: reducing learning rate of group 0 to 1.2500e-03.
+epoch 1, loss 0.5910, train acc 0.670, dev_f1 0.734,time 15.7 sec
+Epoch    76: reducing learning rate of group 0 to 6.2500e-04.
+Epoch   114: reducing learning rate of group 0 to 3.1250e-04.
+Epoch   125: reducing learning rate of group 0 to 1.5625e-04.
+epoch 2, loss 0.2392, train acc 0.769, dev_f1 0.738,time 15.2 sec
+Epoch   136: reducing learning rate of group 0 to 7.8125e-05.
+Epoch   147: reducing learning rate of group 0 to 3.9063e-05.
+Epoch   158: reducing learning rate of group 0 to 1.9531e-05.
+Epoch   169: reducing learning rate of group 0 to 9.7656e-06.
+epoch 3, loss 0.1551, train acc 0.775, dev_f1 0.741,time 15.0 sec
+epoch 4, loss 0.1158, train acc 0.778, dev_f1 0.741,time 15.1 sec
+'''
