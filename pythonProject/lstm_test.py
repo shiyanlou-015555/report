@@ -9,7 +9,7 @@ import time
 import torchtext.vocab as pre_Vocab
 import sys,os
 import torch.nn.functional as F
-import  model.Bilstm as bilstm
+import  model.lstm_my as lstm
 import Vocab
 from config import config
 # 评价函数 evaluate model
@@ -17,6 +17,7 @@ from eval.score import f1
 '''
 没有使用两个embedding，使用模型bilstm，虽然使用了embedding层，但是我默认选了grad=True
 '''
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 config_test = config.Configurable(r'D:\PycharmProjects\pythonProject\config\db.conf')
 # 训练集合
@@ -43,38 +44,43 @@ test_iter = Data.DataLoader(test_set,batch_size)
 # RNN数据
 # 字符向量
 embed_size, num_hiddens, num_layers,dropout,label_size = int(config_test.embed_size),int(config_test.num_hiddens),int(config_test.num_layers),float(config_test.dropout),int(config_test.label_size)
-net = bilstm.BiRNN(vocab, embed_size, num_hiddens, num_layers,dropout,label_size)
+net = lstm.lstm(vocab, embed_size, num_hiddens, num_layers,dropout,label_size)
 # 验证集合函数
-def pred(dev_iter,net,device=None):
+def pred(data_iter,net,device=None):
     if device is None:
         device = list(net.parameters())[0].device
     label = []
     label_true = []
-    net = net.to(device)
+    # net.to(device)
     with torch.no_grad():
         net.eval()
-        for X, Y ,z in dev_iter:
+        for X, Y,z in data_iter:
             # print(torch.argmax(net(X.)), dim=1)
             # break
             # print(torch.argmax(net(X.to(device)),dim=1))
             # print(net(X.to(device)))
             # break
-            label.extend(torch.argmax(net(X.to(device)), dim=1).cpu().numpy().tolist())
+            X = X.to(device)
+            # print(X.shape)
+            # res = net(X,device)
+            # print(res)
+            label.extend(torch.argmax(net(X,device), dim=1).cpu().numpy().tolist())
             label_true.extend(Y.numpy().tolist())
         net.train()
     return f1(label,label_true,classifications=2)
 # 训练函数
-
 def train(train_iter,dev_iter,net, loss, optimizer, scheduler,device, num_epochs):
     net = net.to(device)
     print("training on ", device)
     batch_count = 0
     for epoch in range(num_epochs):
         train_l_sum, train_acc_sum, n, start = 0.0, 0.0, 0, time.time()
-        for X, y ,z in train_iter:
+        dev_f1 = 0
+        for X, y,z in train_iter:
             X = X.to(device)
             y = y.to(device)
-            y_hat = net(X)
+            y_hat = net(X,device)
+
             l = loss(y_hat, y)
             optimizer.zero_grad()
             l.backward()
@@ -87,7 +93,8 @@ def train(train_iter,dev_iter,net, loss, optimizer, scheduler,device, num_epochs
             scheduler.step(dev_f1)# 对验证集进行测试
             n += y.shape[0]
             batch_count += 1
-        print('epoch %d, loss %.4f, train acc %.3f, dev_f1score %.3f,time %.1f sec'
+            # print(dev_f1)
+        print('epoch %d, loss %.4f, train acc %.3f, dev_f1 %.3f,time %.1f sec'
               % (epoch + 1, train_l_sum / batch_count, train_acc_sum / n,dev_f1,time.time() - start))
 # 预训练词向量使用
 cache_dir = r"D:\glove.6B"
@@ -123,14 +130,14 @@ net.embedding.weight.data.copy_(load_pretrained_embedding(vocab.itos, glove_voca
 net.embedding.weight.requires_grad = False # 直接加载预训练好的, 所以不需要更新它
 
 ### 训练
-num_epochs = 7
-lr = 0.004
+num_epochs = 50
+lr = 0.01
 
 optimizer = torch.optim.Adam(net.parameters(),lr=lr)
 # 指数调整
 # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer,gamma=0.9)
 #scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer,step_size=30,gamma=0.5)f1_score is :0.7577853675212161
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,mode='max',factor=0.5,patience=10,verbose=True,eps=0.0005)#f1_score is :0.7605179083076073
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,mode='max',factor=0.5,patience=10,verbose=True,eps=0.000005)#f1_score is :0.7605179083076073
 loss = torch.nn.CrossEntropyLoss()# softmax,交叉熵
 train(train_iter,dev_iter,net, loss, optimizer,scheduler, device, num_epochs)
 # 测试
@@ -151,43 +158,3 @@ for i,j in zip(label,label_true):
     k=k+1
 print(k/1060)
 print('f1_score is :{}'.format(f1(label_true,label,2)))
-'''
-There are 23 oov words.
-training on  cuda
-epoch 1, loss 0.5810, train acc 0.688, dev_f1score 0.736,time 7.7 sec
-epoch 2, loss 0.2105, train acc 0.804, dev_f1score 0.753,time 6.6 sec
-epoch 3, loss 0.1105, train acc 0.853, dev_f1score 0.754,time 6.6 sec
-0.7591377694470478
-f1_score is :0.7577067180611479
-training on  cuda
-epoch 1, loss 0.6107, train acc 0.656, dev_f1score 0.740,time 7.4 sec
-epoch 2, loss 0.2153, train acc 0.805, dev_f1score 0.751,time 6.5 sec
-epoch 3, loss 0.1101, train acc 0.860, dev_f1score 0.769,time 6.5 sec
-0.7575471698113208
-f1_score is :0.7582622461944963
-There are 28 oov words.
-training on  cuda
-epoch 1, loss 0.6104, train acc 0.660, dev_f1score 0.725,time 7.4 sec
-epoch 2, loss 0.2173, train acc 0.797, dev_f1score 0.759,time 6.6 sec
-epoch 3, loss 0.1107, train acc 0.859, dev_f1score 0.776,time 6.7 sec
-epoch 4, loss 0.0655, train acc 0.891, dev_f1score 0.772,time 6.7 sec
-epoch 5, loss 0.0363, train acc 0.932, dev_f1score 0.759,time 6.8 sec
-epoch 6, loss 0.0201, train acc 0.958, dev_f1score 0.764,time 6.7 sec
-epoch 7, loss 0.0105, train acc 0.973, dev_f1score 0.763,time 6.6 sec
-epoch 8, loss 0.0070, train acc 0.983, dev_f1score 0.760,time 6.6 sec
-0.7660377358490567
-f1_score is :0.7656165913954696
-There are 28 oov words.
-training on  cuda
-Epoch    17: reducing learning rate of group 0 to 2.0000e-03.
-Epoch    33: reducing learning rate of group 0 to 1.0000e-03.
-epoch 1, loss 0.5822, train acc 0.683, dev_f1score 0.723,time 7.8 sec
-epoch 2, loss 0.2421, train acc 0.764, dev_f1score 0.738,time 6.8 sec
-epoch 3, loss 0.1502, train acc 0.787, dev_f1score 0.729,time 6.7 sec
-epoch 4, loss 0.1058, train acc 0.802, dev_f1score 0.733,time 7.0 sec
-epoch 5, loss 0.0794, train acc 0.819, dev_f1score 0.732,time 6.9 sec
-epoch 6, loss 0.0609, train acc 0.834, dev_f1score 0.745,time 6.9 sec
-epoch 7, loss 0.0468, train acc 0.857, dev_f1score 0.744,time 7.1 sec
-0.7603773584905661
-f1_score is :0.7605179083076073
-'''

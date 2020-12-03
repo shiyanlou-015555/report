@@ -26,7 +26,7 @@ dev = pd.read_csv(config_test.dev_dir)[config_test.cloums.split(',')]
 test = pd.read_csv(config_test.test_dir)[config_test.cloums.split(',')]
 # 字典创建
 temp = pd.concat([train,dev,test],axis=0)
-vocab_pre = Vocab.Vocab_built(max_len=50)
+vocab_pre = Vocab.Vocab_built(max_len=10)
 vocab = vocab_pre.get_vocab_comments(temp)
 # 训练集合的组装
 train_set = Data.TensorDataset(*vocab_pre.preprocess_comments(train, vocab))
@@ -45,11 +45,11 @@ test_iter = Data.DataLoader(test_set,batch_size)
 # 字符向量
 num_epochs = 50
 embed_size, num_hiddens, num_layers,dropout,label_size = int(config_test.embed_size),int(config_test.num_hiddens),int(config_test.num_layers),float(config_test.dropout),int(config_test.label_size)
-lr = 0.001
+lr = 0.01
 def get_params():
     def _one(shape):
-        ts = torch.tensor(np.random.normal(0, 0.01, size=shape), device=device, dtype=torch.float32)
-        return torch.nn.Parameter(ts, requires_grad=True)
+        ts = torch.tensor(np.random.normal(0, 0, size=shape), device=device, dtype=torch.float32)
+        return torch.nn.Parameter(torch.nn.init.xavier_uniform(ts), requires_grad=True)
 
     def _three():
         return (_one((embed_size, num_hiddens)),
@@ -94,12 +94,11 @@ def lstm(inputs, state, params):
         H = O * C.tanh()
         Y = torch.matmul(H, W_hq) + b_q
         outputs.append(Y)
-    temp = outputs[0]
-    for i in outputs:
-        temp = torch.cat((temp,i),0)
+    temp  = torch.cat(outputs,0)
+    temp = temp.resize(inputs.size(0),inputs.size(1),num_hiddens)
     # print(temp.shape)
     # print(inputs.shape)
-    temp = temp.resize(inputs.size(0)+1,inputs.size(1),num_hiddens)
+    # temp = temp.resize(inputs.size(0)+1,inputs.size(1),num_hiddens)
     temp = temp.permute(1, 2, 0)
     #print(temp.shape)
     encode = torch.squeeze(nn.functional.max_pool1d(temp,temp.size(2)))
@@ -159,7 +158,7 @@ def load_pretrained_embedding(words, pretrained_vocab):
     return embed
 
 embedding.weight.data.copy_(load_pretrained_embedding(vocab.itos, glove_vocab))
-embedding.weight.requires_grad = False # 直接加载预训练好的, 所以不需要更新它
+embedding.weight.requires_grad = True # 直接加载预训练好的, 所以不需要更新它
 embedding.to(device)
 # def train_t(lstm,get_params,init_lstm_state,train_iter,dev_iter,device, num_epochs):
 #     print("training on ", device)
@@ -192,6 +191,25 @@ embedding.to(device)
 #               % (epoch + 1, train_l_sum / batch_count, train_acc_sum / n,time.time() - start)
 #
 # train_t(lstm,get_params,init_lstm_state,train_iter,dev_iter,device,num_epochs)
+# 验证集合函数
+def pred(data_iter,net,state,param,device=None):
+    if device is None:
+        device = list(net.parameters())[0].device
+    label = []
+    label_true = []
+    # net = net.to(device)
+    with torch.no_grad():
+        for X, Y,z in dev_iter:
+            # print(torch.argmax(net(X.)), dim=1)
+            # break
+            # print(torch.argmax(net(X.to(device)),dim=1))
+            # print(net(X.to(device)))
+            # break
+            label.extend(torch.argmax(net(X.to(device),state,param), dim=1).cpu().numpy().tolist())
+            label_true.extend(Y.numpy().tolist())
+    from sklearn.metrics import f1_score
+    # return f1(label,label_true,classifications=2)
+    return f1_score(label, label_true)
 def train_t(train_iter,dev_iter,device,num_epochs):
     print("training on ", device)
     params = get_params()
@@ -199,6 +217,7 @@ def train_t(train_iter,dev_iter,device,num_epochs):
     loss = nn.CrossEntropyLoss()#交叉熵损失函数
     batch_count = 0
     for epoch in range(num_epochs):
+        state_c = torch.tensor([0])
         train_l_sum, train_acc_sum, n, start = 0.0, 0.0, 0, time.time()
         for X, y ,z in train_iter:
             state = init_lstm_state(y.size(0), num_hiddens, device)
@@ -222,9 +241,11 @@ def train_t(train_iter,dev_iter,device,num_epochs):
             # scheduler.step(dev_f1)# 对验证集进行测试
             n += y.shape[0]
             batch_count += 1
+            state_c = state
             # print(train_acc_sum / n)
         # print('epoch %d, loss %.4f, train acc %.3f, dev_f1score %.3f,time %.1f sec'
         #       % (epoch + 1, train_l_sum / batch_count, train_acc_sum / n,dev_f1,time.time() - start))
+        print(pred(dev_iter, lstm, state_c, params, device))
         print('epoch %d, loss %.4f, train acc %.3f,time %.1f sec'
               % (epoch + 1, train_l_sum / batch_count, train_acc_sum / n,time.time() - start))
 
